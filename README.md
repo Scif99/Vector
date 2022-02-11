@@ -9,6 +9,10 @@ in C++, as well as the design decisions made along the way. The code is mostly b
 - using swap can be used as an alternative to implement assignment operators
 - However, it cannot be used in constructors (e.g. move constructor) as the other object will not be in a valid state after the swap. 
 
+**Allocators**
+- Allocators handle direct memory
+- Allocators allow for the separation of allocating memory and object construction (compared to new)
+- When new is used to allocate memory for a C++ class object, the object's constructor is called after the memory is allocated.
 
 **RAII**
 - The auxilliary class vect_base is an example of using RAII. It represents the memory for the vector (e.g. it hands allocation/deallocation)
