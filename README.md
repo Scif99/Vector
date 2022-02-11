@@ -11,6 +11,7 @@ in C++, as well as the design decisions made along the way. The code is mostly b
 
 
 **RAII**
+- The auxilliary class vect_base is an example of using RAII. It handles memory for the vector.
 - For example, a swap is used to implement the copy assignment operator for vect.
 - The other vector is then destroyed as it goes out of scope. This then calls the destructors of vect's members, namely vect_base, which safely deallocates memory.
 
