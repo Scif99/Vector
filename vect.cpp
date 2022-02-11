@@ -27,8 +27,7 @@ vect_base<T,A>& vect_base<T,A>::operator=(vect_base<T,A>&& other)
     space = other.space;
 
     other.elem = nullptr; 
-    other.sz = 0;
-    other.space =0;
+    other.sz = other.space = 0;
 
     //could use swap?
 
@@ -39,6 +38,11 @@ vect_base<T,A>& vect_base<T,A>::operator=(vect_base<T,A>&& other)
 
 /* VECTOR*/
 
+template<typename T, typename A> 
+void vect<T,A>::destroy_elements() 
+{
+    for(std::size_t i = 0; i< vb.sz; i++) {~vb.elem[i];} //destroy s each element in the base
+}
 
 template<typename T, typename A> 
 vect<T,A>::vect(std::size_t n, const T& def, const A& all) //contructs a vector of size n with default initialized values.
@@ -66,24 +70,16 @@ vect<T,A>::vect(const vect<T,A>& other) //copy constructor
     std::cout<<"Copy constructor!"<<std::endl;
 }
 
-/*OPTIMISE*/
-
 template<typename T, typename A>  
 vect<T,A>& vect<T,A>::operator=(const vect<T,A>& other) //copy assignment
 {
     if(&other==this) return *this; //check for self-assignment
 
-    vect_base<T,A> p = vect_base<T,A>(other.vb.alloc, other.vb.sz);
-
+    vect_base<T,A> p = vect_base<T,A>(other.vb.alloc, other.vb.sz); // these 2 lines are just the copy constructor!
     std::uninitialized_copy(other.vb.elem, other.vb.elem + other.vb.sz, p.elem);
+    //vect temp{other};
 
-    //destroy elements in vb?
-    for(std::size_t i = 0; i< vb.sz; i++) {
-        ~vb.elem[i];
-    }
-
-    //alternatively, copy & swap?
-
+    destroy_elements();
     std::swap(vb,p);
 
     std::cout<<"Copy Assignment!"<<std::endl;
@@ -104,10 +100,8 @@ template<typename T, typename A>
 vect<T,A>& vect<T,A>::operator=(vect<T,A>&& other) {
 
     if(&other == this)  return *this;
-    
-    //might want to destroy elements of other explicitly...
-    //but the state of other doesn't matter after move, so can just use a swap to transfer ownership
-    std::swap(*this, other); 
+
+    std::swap(*this, other); //safe to swap here
 
     std::cout<<"Move assignment!"<<std::endl;
     return *this;
@@ -119,15 +113,12 @@ template<typename T, typename A>
 vect<T,A>::~vect() 
 {
     //destroy elements in vb
-    for(std::size_t i = 0; i< vb.sz; i++) {
-        ~vb.elem[i];
-    }
+    destroy_elements();
     std::cout<<"Destroyed!"<<std::endl;
 }
 
 
 //STORAGE
-
 
 //adds free space 
 template<typename T,typename A>
@@ -137,39 +128,41 @@ void vect<T,A>::reserve(std::size_t newalloc)
     if(newalloc<=vb.space) return; //don't allow downsizing
 
     vect_base<T,A> b{vb.alloc, newalloc}; //allocate memory
-    std::uninitialized_copy(vb.elem, vb.elem + size(), b.elem); /*OPTIMISE*/
- 
-    //destroy elements in vb
-    for(std::size_t i = 0; i< vb.sz; i++) {
-        ~vb.elem[i];
-    }
 
-    std::swap<vect_base<T,A>>(*this, b); //swap (uses move semantics?)
+    std::uninitialized_copy(vb.elem, vb.elem + size(), b.elem); //can be optimised...
+    destroy_elements();
 
-    //old memory freed as vect_base gets destroyed (RAII)
+    std::swap(vb,b);
+
+    //old value released on return
 }
 
-// //change the size of the vector
-// template<typename T, typename A>
-// void vect<T,A>::resize(std::size_t newsize, T def) 
-// {
-//     reserve(newsize);
-//     for(std::size_t i = sz ;i< newsize;i++) alloc.construct(&elem[i], def);
-//     for(std::size_t i = newsize ;i< sz;i++) alloc.destroy(&elem[i]); //destroy 'excess' memory in case we downsize
+//change the size of the vector
+template<typename T, typename A>
+void vect<T,A>::resize(std::size_t newsize, T def) 
+{
+    reserve(newsize);
+    if(vb.sz < newsize) {
+        std::uninitialized_fill(vb.elem + vb.size, vb.elem + vb.newsize, def);
+    }
+    else{
+
+        for(std::size_t i = newsize; i < vb.sz; i++) {~vb.elem[i];} //destroy excess
+    }
     
-//     sz = newsize;
-// }
+    vb.sz = newsize;
+}
 
-// //increase vector size by one
-// template<typename T, typename A> 
-// void vect<T,A>::push_back(const T& val) 
-// {
-//     if(space==0) {reserve(8);} //case where vector is initially empty
+//increase vector size by one
+template<typename T, typename A> 
+void vect<T,A>::push_back(const T& val) 
+{
+    if(vb.space==0) {reserve(8);} //case where vector is initially empty
 
-//     else if(sz == space)  reserve(2* space); //case where vector has nor free space left
-//     alloc.construct(&elem[sz], val);
-//     sz++;
-// }
+    else if(vb.sz == vb.space)  reserve(2* vb.space); //case where vector has nor free space left
+    vb.alloc.construct(&vb.elem[vb.sz], val);
+    ++vb.space;
+}
 
 // template<typename T, typename A> void vect<T,A>::push_back( T&& tmp) {
 
@@ -202,8 +195,10 @@ int main() {
 
     vect<char> w{'a','b','c'};
 
+
     w = v;
 
+    w.push_back('h');
 
 }
 

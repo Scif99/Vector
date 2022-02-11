@@ -29,7 +29,7 @@ template<typename T, typename A = std::allocator<T> >
 class vect {
 
     vect_base<T,A> vb; //data 
-    //void destroy_elements();
+    void destroy_elements();
 
 public:
 //default?
@@ -42,7 +42,7 @@ vect& operator=(const vect& other); //copy assignment
 vect(vect&& other); //move constructor
 vect& operator=(vect&& other); //move assignment
 
-~vect() ;
+~vect(); 
 
 void reserve(std::size_t newalloc); //add capacity
 void resize(std::size_t newsize,  T def = T()); //change size
