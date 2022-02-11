@@ -4,3 +4,5 @@ in C++, as well as the design decisions made along the way. The code is mostly b
 TO-DO
 - Implement iterators
 - 
+- 'copy-and-swap'
+
