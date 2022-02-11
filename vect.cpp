@@ -39,9 +39,9 @@ vect_base<T,A>& vect_base<T,A>::operator=(vect_base<T,A>&& other)
 /* VECTOR*/
 
 template<typename T, typename A> 
-void vect<T,A>::destroy_elements() 
+void vect<T,A>::destroy_elements() //calls destructor for every 
 {
-    for(std::size_t i = 0; i< vb.sz; i++) {~vb.elem[i];} //destroy s each element in the base
+    for(std::size_t i = 0; i< vb.sz; i++) {~vb.elem[i];}
 }
 
 template<typename T, typename A> 
