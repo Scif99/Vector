@@ -13,6 +13,7 @@ in C++, as well as the design decisions made along the way. The code is mostly b
 - Allocators handle direct memory
 - Allocators allow for the separation of allocating memory and object construction (compared to new)
 - When new is used to allocate memory for a C++ class object, the object's constructor is called after the memory is allocated.
+- This is necessary for types that do not have a default constructor!
 
 **RAII**
 - The auxilliary class vect_base is an example of using RAII. It represents the memory for the vector (e.g. it hands allocation/deallocation)
