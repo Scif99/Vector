@@ -22,6 +22,7 @@ struct vect_base{
     vect_base(vect_base&& other); //move operations
     vect_base& operator=(vect_base&& other);    
 
+
 };
 
 
@@ -32,7 +33,7 @@ class vect {
     void destroy_elements();
 
 public:
-//default?
+
 explicit vect(std::size_t n, const T& def = T(), const A& all = A()); //construct vector of specified size
 vect(std::initializer_list<T> list, const A& all = A()); //initializer-list constructor
 
@@ -61,37 +62,3 @@ T& operator[](std::size_t n) {return vb.elem[n];}; //for non-const
 
 // using member initializer lists prevents default initialization + assignments... uses direct initialization instdead
 
-//memcpy only works with data that doesn;t have explicit constructors (works for float, but not std::string..)
-//prefer std::copy to memcpy, compiler can replace the std::copy with memcpy if necessary...
-
-//std::move is safe because a copy will be called if a move construcor does not exist
-
-// When new is used to allocate memory for a C++ class object, the object's constructor is called after the memory is allocated.
-// allocators allow for the separation of allocating memory and object construction (the new operator does both)
-
-//uninitialized_copy & friends guarantee thet partially constructed subobjects will be destroyed if an exception is thrown
-
-
-/* Design RULES
-
-- default values go in .h file
-
-- the main principle of RAII is to give ownership of any heap-allocated resource (e.g. dynamically allocated memory)
-to a stack-allocated object, whose destructor contains the code to delete or free the resource and also any associated cleanup code.
-
-- Using RAII, we define a vect_base class that handles the memory for a vector. Each vector then contains a vector_base as a member.
-
-*/
-
-
-/*TO-DO
-
-- what happens to allocator in constructors?
-
-- Can we use move semantics in the initizlier-list constructor? (apparently not!)
-
--range-checking?
-
-- Implement emplace_back (variadic templates)
-- pop_back
-*/
