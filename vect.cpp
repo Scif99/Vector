@@ -4,33 +4,30 @@
 
 /*VECT_BASE*/
 
+
+
+
 template<typename T, typename A> //move constructor
 vect_base<T,A>::vect_base(vect_base<T,A>&& other)
-    : alloc{other.alloc}, elem{other.elem}, sz{other.sz}, space{other.space}
+    : alloc{other.alloc}, sz{other.sz}, elem{other.elem}, space{other.space}
 {
 
     other.elem = nullptr;
     other.sz = 0;
     other.space =0;
+
+    //std::cout<<"Base Move-Constructed!\n";
 }
 
 
-/*OPTIMISE*/
+
+
+/*Use swap?*/
 template<typename T, typename A> //move assignment
 vect_base<T,A>& vect_base<T,A>::operator=(vect_base<T,A>&& other)
 {
-    delete[] elem;
-
-    alloc = other.alloc; 
-    elem = other.elem;
-    sz = other.sz;
-    space = other.space;
-
-    other.elem = nullptr; 
-    other.sz = other.space = 0;
-
-    //could use swap?
-
+    swap(*this, other);
+    //std::cout<<"Base Move-Assigned!\n";
     return *this;
 }
 
@@ -38,8 +35,9 @@ vect_base<T,A>& vect_base<T,A>::operator=(vect_base<T,A>&& other)
 
 /* VECTOR*/
 
+
 template<typename T, typename A> 
-void vect<T,A>::destroy_elements() //calls destructor for every 
+void vect<T,A>::destroy_elements() //calls destructor for each element
 {
     for(std::size_t i = 0; i< vb.sz; i++) {~vb.elem[i];}
 }
@@ -49,7 +47,7 @@ vect<T,A>::vect(std::size_t n, const T& def, const A& all) //contructs a vector 
     : vb{vect_base<T,A>(all,n)}
 {
     std::uninitialized_fill(vb.elem,vb.elem + vb.sz,def);
-    std::cout<<"Constructed!"<<'\n';
+    std::cout<<"Constructed!\n";
 }
 
 
@@ -58,7 +56,7 @@ vect<T,A>::vect(std::initializer_list<T> list, const A& all) //initializer-list 
     : vb{vect_base<T,A>(all, list.size())}
 {
     std::uninitialized_copy(list.begin(), list.end(),vb.elem); //copy over to elem 
-    std::cout<<"list-constructed!"<<std::endl; //for debugging
+    std::cout<<"list-constructed!\n"; 
 }
 
 
@@ -66,23 +64,19 @@ template<typename T, typename A>
 vect<T,A>::vect(const vect<T,A>& other) //copy constructor
     : vb{vect_base<T,A>(other.vb.alloc, other.vb.sz)} 
 {
-    std::uninitialized_copy(other.vb.elem, other.vb.elem + other.vb.sz, vb.elem); //copy from other
-    std::cout<<"Copy constructor!"<<std::endl;
+    std::uninitialized_copy(other.vb.elem, other.vb.elem + other.vb.sz, vb.elem); //copies into the uninitialized memory allocated by alloc
+    std::cout<<"Copy Constructed!\n";
 }
+
+
 
 template<typename T, typename A>  
 vect<T,A>& vect<T,A>::operator=(const vect<T,A>& other) //copy assignment
 {
-    if(&other==this) return *this; //check for self-assignment
-
-    vect_base<T,A> p = vect_base<T,A>(other.vb.alloc, other.vb.sz); // these 2 lines are just the copy constructor!
-    std::uninitialized_copy(other.vb.elem, other.vb.elem + other.vb.sz, p.elem);
-    //vect temp{other};
-
-    destroy_elements();
-    std::swap(vb,p);
-
-    std::cout<<"Copy Assignment!"<<std::endl;
+    //see 'copy-and-swap'
+    vect<T,A> tmp{other};
+    swap(*this,tmp);
+    std::cout<<"Copied!\n";
     return *this;
 }
 
@@ -92,18 +86,14 @@ template<typename T, typename A>
 vect<T,A>::vect(vect<T,A>&& other) 
     : vb{std::move(other.vb)} //transfer ownership
 {
-    std::cout<<"Move constructor!"<<std::endl;
+    std::cout<<"Move Constructed!\n";
 }
 
 //move assignment
 template<typename T, typename A>
 vect<T,A>& vect<T,A>::operator=(vect<T,A>&& other) {
-
-    if(&other == this)  return *this;
-
-    std::swap(*this, other); //safe to swap here
-
-    std::cout<<"Move assignment!"<<std::endl;
+    
+    swap(*this, other);
     return *this;
 }
 
@@ -112,9 +102,8 @@ vect<T,A>& vect<T,A>::operator=(vect<T,A>&& other) {
 template<typename T, typename A>
 vect<T,A>::~vect() 
 {
-    //destroy elements in vb
     destroy_elements();
-    std::cout<<"Destroyed!"<<std::endl;
+    std::cout<<"Destroyed!\n";
 }
 
 
@@ -122,19 +111,19 @@ vect<T,A>::~vect()
 
 //adds free space 
 template<typename T,typename A>
-void vect<T,A>::reserve(std::size_t newalloc) 
+void vect<T,A>::reserve(std::size_t new_capacity) 
 {
    
-    if(newalloc<=vb.space) return; //don't allow downsizing
+    if(new_capacity<=vb.space) return; //don't allow downsizing
 
-    vect_base<T,A> b{vb.alloc, newalloc}; //allocate memory
+    vect_base<T,A> b{vb.alloc, new_capacity}; 
+    b.sz = vb.sz; //size should not change?
 
-    std::uninitialized_copy(vb.elem, vb.elem + size(), b.elem); //can be optimised...
+    //these two lines can be optimised with a move...
+    std::uninitialized_copy(vb.elem, vb.elem + vb.sz, b.elem); 
     destroy_elements();
 
-    std::swap(vb,b);
-
-    //old value released on return
+    std::swap(vb,b); 
 }
 
 //change the size of the vector
@@ -142,13 +131,8 @@ template<typename T, typename A>
 void vect<T,A>::resize(std::size_t newsize, T def) 
 {
     reserve(newsize);
-    if(vb.sz < newsize) {
-        std::uninitialized_fill(vb.elem + vb.size, vb.elem + vb.newsize, def);
-    }
-    else{
-
-        for(std::size_t i = newsize; i < vb.sz; i++) {~vb.elem[i];} //destroy excess
-    }
+    if(vb.sz < newsize) std::uninitialized_fill(vb.elem + vb.sz, vb.elem + newsize, def); //size grows
+    else for(std::size_t i = newsize; i < vb.sz; i++) ~vb.elem[i]; //size shrinks
     
     vb.sz = newsize;
 }
@@ -157,30 +141,22 @@ void vect<T,A>::resize(std::size_t newsize, T def)
 template<typename T, typename A> 
 void vect<T,A>::push_back(const T& val) 
 {
+
+    std::cout<<"size before:\t"<<this->vb.sz<<'\n';
+    std::cout<<"space before:\t"<<this->vb.space<<'\n';
+
+
     if(vb.space==0) {reserve(8);} //case where vector is initially empty
-
     else if(vb.sz == vb.space)  reserve(2* vb.space); //case where vector has nor free space left
+
+    std::cout<<"size after:\t"<<this->vb.sz<<'\n';
+    std::cout<<"space after:\t"<<this->vb.space<<'\n';
+
     vb.alloc.construct(&vb.elem[vb.sz], val);
-    ++vb.space;
-}
 
-// template<typename T, typename A> void vect<T,A>::push_back( T&& tmp) {
+    ++vb.sz;    
 
-//     if(space==0) {reserve(8);} //case where vector is initially empty
 
-//     else if(sz == space) { //case where vector has nor free space left
-//         reserve(2* space);
-//     }
-
-//     //use a move here as tmp is no longer of user
-//     elem[sz] = std::move(tmp); //note that std::move is necessary as an rvalue reference is actually an lvalue!
-//     ++sz;
-// }
-
-template<typename T, typename A> vect<T,A> fill(vect<T,A> v) {
-    //v = vect(10);
-    std::cout<<"Filled"<<std::endl;
-    return v;
 }
 
 
@@ -191,14 +167,20 @@ int main() {
     
     //fill(vect<int>{1,2});
 
-    vect<char> v(5,'a');
+    vect<char> v{'a','b'};
+    vect<char> w{'x','y'};
 
-    vect<char> w{'a','b','c'};
+    //vect<char> w{std::move(v)}; //should call move constructor
 
+    w = std::move(v); //should call move assignment operator
 
-    w = v;
+    char tmp{'x'};
+    w.push_back(tmp);
 
-    w.push_back('h');
+    
+    //w.push_back('v');
+
+    for(int i = 0;i<w.size();i++) {std::cout<<w[i]<<'\n';}
 
 }
 
